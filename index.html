@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Editor and ChatGPT Integration</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prettier/2.5.1/standalone.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prettier/2.5.1/parser-html.min.js"></script>
+</head>
+
+<body>
+    <div class="container">
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <label for="code-input" class="form-label">Code Input</label>
+                <textarea id="code-input" class="form-control" rows="10"></textarea>
+            </div>
+            <div class="col-md-6">
+                <label for="preview-frame" class="form-label">Preview</label>
+                <iframe id="preview-frame" class="w-100" style="height: 300px; border: 1px solid #ced4da;"></iframe>
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <label for="instruction-input" class="form-label">指示</label>
+                <textarea id="instruction-input" class="form-control" rows="3"></textarea>
+            </div>
+            <div class="col-md-6">
+                <label for="api-key-input" class="form-label">API Key</label>
+                <input type="password" id="api-key-input" class="form-control">
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-md-4">
+                <button id="submit-button" class="btn btn-primary">送信</button>
+                <button id="add-option-button" class="btn btn-secondary">オプションに追加</button>
+            </div>
+            <div class="col-md-4">
+                <label for="options-select" class="form-label">Select Code</label>
+                <select id="options-select" class="form-select">
+                    <option selected>Select an option...</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="code-name-input" class="form-label">設定名</label>
+                <input type="text" id="code-name-input" class <input type="text" id="code-name-input"
+                    class="form-control">
+            </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-md-4">
+                <button id="modify-button" class="btn btn-info">修正</button>
+                <button id="export-button" class="btn btn-success">エクスポート</button>
+                <button id="formatButton" class="btn btn-primary">整形</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        $(document).ready(function () {
+            const apiKeyInput = $("#api-key-input");
+            const instructionInput = $("#instruction-input");
+            const codeInput = $("#code-input");
+            const previewFrame = $("#preview-frame");
+            const submitButton = $("#submit-button");
+            const addOptionButton = $("#add-option-button");
+            const optionsSelect = $("#options-select");
+            const modifyButton = $("#modify-button");
+            const exportButton = $("#export-button");
+            const codeNameInput = $("#code-name-input");
+            const formatButton = $("#formatButton");
+
+            formatButton.click(function () {
+                const code = codeInput.val();
+                if (!code) {
+                    alert("No code to format.");
+                    return;
+                }
+
+                const formattedCode = prettier.format(code, {
+                    parser: "html"
+                });
+                codeInput.val(formattedCode);
+                previewFrame.contents().find("body").html(formattedCode);
+            });
+
+            // Update the preview frame in real-time
+            codeInput.on("input", function () {
+                updatePreview();
+            });
+
+            // Fetch code from ChatGPT API
+            submitButton.click(async function () {
+                const apiKey = apiKeyInput.val();
+                const instruction = instructionInput.val();
+
+                if (!apiKey || !instruction) {
+                    alert("Please provide an API key and instruction.");
+                    return;
+                }
+
+                const code = await fetchCodeFromChatGPT(apiKey, instruction);
+                if (code) {
+                    codeInput.val(code);
+                    updatePreview();
+                }
+            });
+
+            // Add option
+            addOptionButton.click(function () {
+                const codeName = codeNameInput.val();
+                const code = codeInput.val();
+
+                if (!codeName || !code) {
+                    alert("Please provide a name and input some code.");
+                    return;
+                }
+
+                optionsSelect.append(new Option(codeName, code));
+            });
+
+            // Select option
+            optionsSelect.change(function () {
+                const selectedCode = optionsSelect.val();
+                codeInput.val(selectedCode);
+                updatePreview();
+            });
+
+            // Modify code
+            modifyButton.click(async function () {
+                const apiKey = apiKeyInput.val();
+                const instruction = instructionInput.val();
+                const baseCode = codeInput.val();
+
+                if (!apiKey || !instruction || !baseCode) {
+                    alert("Please provide an API key, instruction, and base code.");
+                    return;
+                }
+
+                const modifiedCode = await fetchModifiedCodeFromChatGPT(apiKey, instruction, baseCode);
+                if (modifiedCode) {
+                    codeInput.val(modifiedCode);
+                    updatePreview();
+                }
+            });
+
+            // Export code
+            exportButton.click(function () {
+                const code = codeInput.val();
+                if (!code) {
+                    alert("No code to export.");
+                    return;
+                }
+
+                const zip = new JSZip();
+                zip.file("code.html", code);
+                zip.generateAsync({
+                    type: "blob"
+                }).then(function (content) {
+                    saveAs(content, "code_export.zip");
+                });
+            });
+
+            function updatePreview() {
+                const code = codeInput.val();
+                previewFrame.attr("srcdoc", code);
+            }
+
+            async function fetchCodeFromChatGPT(apiKey, instruction) {
+                try {
+                    const response = await callChatGPTAPI(apiKey, instruction);
+                    if (response.status === 200) {
+                        const data = await response.json();
+                        const code = data.choices[0].message.content.trim(); // 修正された部分
+                        return code;
+                    } else {
+                        alert("Failed to fetch code from ChatGPT. Please check your API key.");
+                        return null;
+                    }
+                } catch (error) {
+                    alert("An error occurred while fetching code from ChatGPT.");
+                    return null;
+                }
+            }
+
+            async function fetchModifiedCodeFromChatGPT(apiKey, instruction, baseCode) {
+                try {
+                    const response = await callChatGPTAPI(apiKey, `Modify the following code based on the instruction: "${instruction}"\n\n${baseCode}`);
+                    if (response.status === 200) {
+                        const data = await response.json();
+                        const modifiedCode = data.choices[0].message.content.trim(); // 修正された部分
+                        return modifiedCode;
+                    } else {
+                        alert("Failed to fetch modified code from ChatGPT. Please check your API key.");
+                        return null;
+                    }
+                } catch (error) {
+                    alert("An error occurred while fetching modified code from ChatGPT.");
+                    return null;
+                }
+            }
+
+
+            async function callChatGPTAPI(apiKey, instructions) {
+                const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        "model": "gpt-3.5-turbo",
+                        "messages": [
+                            {
+                                "role": "user",
+                                "content": instructions
+                            }
+                        ]
+                    }),
+                });
+
+                return response;
+            }
+        });
+    </script>
+</body>
+
+</html>
