@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Code Editor and ChatGPT Integration</title>
-  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-  <style>
-    #code-input,
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Editor and ChatGPT Integration</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        #code-input,
         #preview-frame {
             height: 65vh;
         }
@@ -28,49 +29,90 @@
             z-index: 1001;
         }
 
-        #preview-frame.fullscreen + #exit-fullscreen-button {
+        #preview-frame.fullscreen+#exit-fullscreen-button {
             display: block;
         }
-  </style>
-  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
-  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/prettier/2.5.1/standalone.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/prettier/2.5.1/parser-html.min.js"></script>
-</head>
-<body>
-  <div class="container-fluid">
-    <div class="row mt-3">
-      <div class="col-md-6"> <label for="code-input" class="form-label">Code Input</label> <textarea id="code-input" class="form-control" rows="10" style="resize: none;"></textarea> </div>
-      <div class="col-md-6">
-        <div class="d-flex justify-content-between align-items-center"> <label for="preview-frame" class="form-label">Preview</label> <button id="fullscreen-button" class="btn btn-sm btn-outline-secondary">全画面表示</button> </div> <iframe id="preview-frame" class="w-100" style="border: 1px solid #ced4da;"></iframe> <button id="exit-fullscreen-button" class="btn btn-sm btn-outline-secondary">全画面表示解除</button> </div>
-    </div>
-    <div class="row mt-3">
-      <div class="col-md-6"> <label for="instruction-input" class="form-label">指示</label> <textarea id="instruction-input" class="form-control" rows="3"></textarea> </div>
-      <div class="col-md-6"> <label for="api-key-input" class="form-label">API Key</label> <input type="password" id="api-key-input" class="form-control"> </div>
-    </div>
-    <div class="row mt-3">
-      <div class="col-md-6 d-flex">
-          <button id="submit-button" class="btn btn-primary mr-2">送信</button>
-          <select id="options-select" class="form-select">
-              <option selected>Select an option...</option>
-          </select>
-      <div class="col-md-6 d-flex"> <button id="modify-button" class="btn btn-info mr-2">修正</button> </div>
 
-      </div>
-          <div class="row mt-3"><div class="col-md-6 d-flex"> <input type="text" id="code-name-input" class="form-control"> </div>
-        <div class="col-md-6 d-flex"> <button id="add-option-button" class="btn btn-secondary">追加</button><button id="export-button" class="btn btn-success">エクスポート</button></div>
-       </div>
-        
+        #loading-indicator {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2000;
+        }
+
+        #loading-indicator {
+            display: none;
+            /* 既存 */
+            position: fixed;
+            /* 追加 */
+            top: 50%;
+            /* 追加 */
+            left: 50%;
+            /* 追加 */
+            transform: translate(-50%, -50%);
+            /* 追加 */
+        }
+    </style>
+    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prettier/2.5.1/standalone.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prettier/2.5.1/parser-html.min.js"></script>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row mt-3">
+            <div class="col-md-6"> <label for="code-input" class="form-label">Code Input</label> <textarea
+                    id="code-input" class="form-control" rows="10" style="resize: none;"></textarea> </div>
+            <div class="col-md-6">
+                <div class="d-flex justify-content-between align-items-center"> <label for="preview-frame"
+                        class="form-label">Preview</label> <button id="fullscreen-button"
+                        class="btn btn-sm btn-outline-secondary">全画面表示</button> </div> <iframe id="preview-frame"
+                    class="w-100" style="border: 1px solid #ced4da;"></iframe> <button id="exit-fullscreen-button"
+                    class="btn btn-sm btn-outline-secondary">全画面表示解除</button>
+            </div>        <div id="loading-indicator" class="text-center">
+            <div class="spinner-border text-primary" role="status"> <!-- 追加 -->
+                <span class="sr-only">読み込み中...</span>
+            </div>
+        </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-md-6"> <label for="instruction-input" class="form-label">指示</label> <textarea
+                    id="instruction-input" class="form-control" rows="3"></textarea> </div>
+            <div class="col-md-6"> <label for="api-key-input" class="form-label">API Key</label> <input type="password"
+                    id="api-key-input" class="form-control"> </div>
+        </div>
+        <div class="row mt-3">
+            <div class="col-md-6 d-flex">
+                <button id="submit-button" class="btn btn-primary mr-2">送信</button>
+                <select id="options-select" class="form-select">
+                    <option selected>Select an option...</option>
+                </select>
+                <div class="col-md-6 d-flex"> <button id="modify-button" class="btn btn-info mr-2">修正</button> </div>
+
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-6 d-flex"> <input type="text" id="code-name-input" class="form-control"> </div>
+                <div class="col-md-6 d-flex"> <button id="add-option-button"
+                        class="btn btn-secondary">追加</button><button id="export-button"
+                        class="btn btn-success">エクスポート</button></div>
+            </div>
+
+        </div>
     </div>
-    <div class="row mt-3">
-      
+    <div id="loading-indicator" class="text-center">
+        <div class="spinner-border text-primary" role="status"> <!-- 追加 -->
+            <span class="sr-only">読み込み中...</span>
+        </div>
     </div>
-  </div>
-  <script>
-    $(document).ready(function () {
+    <script>
+        $(document).ready(function () {
             const apiKeyInput = $("#api-key-input");
             const instructionInput = $("#instruction-input");
             const codeInput = $("#code-input");
@@ -89,7 +131,7 @@
                 previewFrame.toggleClass("fullscreen");
             });
             exitFullscreenButton.click(function () {
-                    previewFrame.toggleClass("fullscreen");
+                previewFrame.toggleClass("fullscreen");
             });
             formatButton.click(function () {
                 const code = codeInput.val();
@@ -186,13 +228,13 @@
                 const code = codeInput.val();
                 previewFrame.attr("srcdoc", code);
             }
-
             async function fetchCodeFromChatGPT(apiKey, instruction) {
                 try {
+                    $("#loading-indicator").show(); // ローディング表示の追加
                     const response = await callChatGPTAPI(apiKey, instruction);
                     if (response.status === 200) {
                         const data = await response.json();
-                        const code = data.choices[0].message.content.trim(); // 修正された部分
+                        const code = data.choices[0].message.content.trim();
                         return code;
                     } else {
                         alert("Failed to fetch code from ChatGPT. Please check your API key.");
@@ -201,11 +243,14 @@
                 } catch (error) {
                     alert("An error occurred while fetching code from ChatGPT.");
                     return null;
+                } finally {
+                    $("#loading-indicator").hide(); // ローディング表示を非表示にする
                 }
             }
 
             async function fetchModifiedCodeFromChatGPT(apiKey, instruction, baseCode) {
                 try {
+                    $("#loading-indicator").show(); // ローディング表示の追加
                     const response = await callChatGPTAPI(apiKey, `"${instruction}"\n\n${baseCode}`);
                     if (response.status === 200) {
                         const data = await response.json();
@@ -218,8 +263,11 @@
                 } catch (error) {
                     alert("An error occurred while fetching modified code from ChatGPT.");
                     return null;
+                } finally {
+                    $("#loading-indicator").hide(); // ローディング表示を非表示にする
                 }
             }
+
 
 
             async function callChatGPTAPI(apiKey, instructions) {
@@ -243,6 +291,7 @@
                 return response;
             }
         });
-  </script>
+    </script>
 </body>
+
 </html>
