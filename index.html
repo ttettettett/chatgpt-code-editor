@@ -7,24 +7,35 @@
     <title>Code Editor and ChatGPT Integration</title>
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
-        #code-input,
-        #preview-frame {
-            height: 65vh;
-        }
+#code-input {
+    resize: none;
+    height: 100%;
+}
+
+#code-container .form-label {
+    margin-bottom: 0.5rem;
+}
+
+#code-container {
+    height: 65vh;
+    display: flex;
+    flex-direction: column;
+}
 
         #preview-frame.fullscreen {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
-            height: 100%;
+            height: 100vh;
             z-index: 1000;
         }
         
-        #preview-container {
+#preview-container {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    height: 65vh;
+    position: relative;
 }
 
 #preview-container > .d-flex {
@@ -34,6 +45,11 @@
 #preview-frame {
     flex: 1;
     border: 1px solid #ced4da;
+    position: relative;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 100%
 }
 
 #exit-fullscreen-button {
@@ -74,8 +90,13 @@
 <body>
     <div class="container-fluid">
         <div class="row mt-3">
-            <div class="col-md-6"> <label for="code-input" class="form-label">Code Input</label> <textarea
-                    id="code-input" class="form-control" rows="10" style="resize: none;"></textarea> </div>
+            <div class="col-md-6">
+<div id="code-container">
+    <label for="code-input" class="form-label">Code Input</label>
+    <textarea id="code-input" class="form-control" rows="10" style="resize: none;"></textarea>
+</div>
+
+      </div>
             <div class="col-md-6">
     <div id="preview-container">
         <div class="d-flex justify-content-between align-items-center">
