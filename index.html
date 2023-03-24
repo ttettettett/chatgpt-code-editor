@@ -20,18 +20,30 @@
             height: 100%;
             z-index: 1000;
         }
+        
+        #preview-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
 
-        #exit-fullscreen-button {
-            display: none;
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 1001;
-        }
+#preview-container > .d-flex {
+    flex: 0;
+}
 
-        #preview-frame.fullscreen+#exit-fullscreen-button {
-            display: block;
-        }
+#preview-frame {
+    flex: 1;
+    border: 1px solid #ced4da;
+}
+
+#exit-fullscreen-button {
+    display: none;
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1002;
+}
+
 
         #loading-indicator {
             display: none;
@@ -44,17 +56,11 @@
 
         #loading-indicator {
             display: none;
-            /* 既存 */
             position: fixed;
-            /* 追加 */
             top: 50%;
-            /* 追加 */
             left: 50%;
-            /* 追加 */
             transform: translate(-50%, -50%);
-            /* 追加 */
         }
-    </style>
     </style>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
@@ -71,13 +77,20 @@
             <div class="col-md-6"> <label for="code-input" class="form-label">Code Input</label> <textarea
                     id="code-input" class="form-control" rows="10" style="resize: none;"></textarea> </div>
             <div class="col-md-6">
-                <div class="d-flex justify-content-between align-items-center"> <label for="preview-frame"
-                        class="form-label">Preview</label> <button id="fullscreen-button"
-                        class="btn btn-sm btn-outline-secondary">全画面表示</button> </div> <iframe id="preview-frame"
-                    class="w-100" style="border: 1px solid #ced4da;"></iframe> <button id="exit-fullscreen-button"
-                    class="btn btn-sm btn-outline-secondary">全画面表示解除</button>
-            </div>        <div id="loading-indicator" class="text-center">
-            <div class="spinner-border text-primary" role="status"> <!-- 追加 -->
+    <div id="preview-container">
+        <div class="d-flex justify-content-between align-items-center">
+            <label for="preview-frame" class="form-label">Preview</label>
+            <div>
+                <button id="back-button" class="btn btn-sm btn-outline-secondary mr-2">戻る</button>
+                <button id="forward-button" class="btn btn-sm btn-outline-secondary">進む</button>
+                <button id="fullscreen-button" class="btn btn-sm btn-outline-secondary mr-2">全画面表示</button>
+                <button id="exit-fullscreen-button" class="btn btn-sm btn-outline-secondary">全画面表示解除</button>
+            </div>
+        </div>
+        <iframe id="preview-frame" class="w-100"></iframe>
+    </div>
+</div>        <div id="loading-indicator" class="text-center">
+            <div class="spinner-border text-primary" role="status">
                 <span class="sr-only">読み込み中...</span>
             </div>
         </div>
@@ -107,7 +120,7 @@
         </div>
     </div>
     <div id="loading-indicator" class="text-center">
-        <div class="spinner-border text-primary" role="status"> <!-- 追加 -->
+        <div class="spinner-border text-primary" role="status">
             <span class="sr-only">読み込み中...</span>
         </div>
     </div>
@@ -118,6 +131,8 @@
             const codeInput = $("#code-input");
             const previewFrame = $("#preview-frame");
             const submitButton = $("#submit-button");
+            const backButton = $("#back-button");
+            const forwardButton = $("#forward-button");
             const addOptionButton = $("#add-option-button");
             const optionsSelect = $("#options-select");
             const modifyButton = $("#modify-button");
@@ -127,12 +142,15 @@
             const fullscreenButton = $("#fullscreen-button");
             const exitFullscreenButton = $("#exit-fullscreen-button");
 
-            fullscreenButton.click(function () {
-                previewFrame.toggleClass("fullscreen");
-            });
-            exitFullscreenButton.click(function () {
-                previewFrame.toggleClass("fullscreen");
-            });
+fullscreenButton.click(function () {
+    previewFrame.toggleClass("fullscreen");
+    exitFullscreenButton.toggle();
+});
+
+exitFullscreenButton.click(function () {
+    previewFrame.toggleClass("fullscreen");
+    exitFullscreenButton.toggle();
+});
             formatButton.click(function () {
                 const code = codeInput.val();
                 if (!code) {
@@ -146,6 +164,36 @@
                 codeInput.val(formattedCode);
                 previewFrame.contents().find("body").html(formattedCode);
             });
+
+// 履歴機能の追加
+let historyList = [];
+let historyIndex = -1;
+
+function addToHistory(code) {
+  if (historyList.length > 0 && code === historyList[historyIndex]) {
+    return;
+  }
+  historyList.splice(historyIndex + 1);
+  historyList.push(code);
+  historyIndex = historyList.length - 1;
+}
+
+function moveToHistory(direction) {
+  const newIndex = historyIndex + direction;
+  if (newIndex >= 0 && newIndex < historyList.length) {
+    historyIndex = newIndex;
+    codeInput.val(historyList[historyIndex]);
+    updatePreview();
+  }
+}
+
+backButton.click(function () {
+  moveToHistory(-1);
+});
+
+forwardButton.click(function () {
+  moveToHistory(1);
+});
 
             // Update the preview frame in real-time
             codeInput.on("input", function () {
@@ -165,6 +213,7 @@
                 const code = await fetchCodeFromChatGPT(apiKey, instruction);
                 if (code) {
                     codeInput.val(code);
+                    addToHistory(code);
                     updatePreview();
                 }
             });
@@ -203,9 +252,12 @@
                 const modifiedCode = await fetchModifiedCodeFromChatGPT(apiKey, instruction, baseCode);
                 if (modifiedCode) {
                     codeInput.val(modifiedCode);
+                    addToHistory(modifiedCode);
                     updatePreview();
                 }
             });
+            
+
 
             // Export code
             exportButton.click(function () {
@@ -230,7 +282,7 @@
             }
             async function fetchCodeFromChatGPT(apiKey, instruction) {
                 try {
-                    $("#loading-indicator").show(); // ローディング表示の追加
+                    $("#loading-indicator").show();
                     const response = await callChatGPTAPI(apiKey, instruction);
                     if (response.status === 200) {
                         const data = await response.json();
@@ -244,13 +296,13 @@
                     alert("An error occurred while fetching code from ChatGPT.");
                     return null;
                 } finally {
-                    $("#loading-indicator").hide(); // ローディング表示を非表示にする
+                    $("#loading-indicator").hide();
                 }
             }
 
             async function fetchModifiedCodeFromChatGPT(apiKey, instruction, baseCode) {
                 try {
-                    $("#loading-indicator").show(); // ローディング表示の追加
+                    $("#loading-indicator").show();
                     const response = await callChatGPTAPI(apiKey, `"${instruction}"\n\n${baseCode}`);
                     if (response.status === 200) {
                         const data = await response.json();
@@ -290,6 +342,7 @@
 
                 return response;
             }
+            
         });
     </script>
 </body>
