@@ -147,7 +147,7 @@
         <div class="row mt-3">
             <div class="col-md-6">
                 <label for="send-times-input" class="form-label">回数</label>
-                <input type="number" id="send-times-input" value="1" min="1" max="100" required>
+                <input type="number" id="send-times-input"  pattern="\d*" value="1" min="1" max="100" required>
                 <button id="submit-button" class="btn btn-primary mr-2">送信</button>
                 <select id="options-select" class="form-select">
                     <option selected>オプション</option>
